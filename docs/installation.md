@@ -26,10 +26,14 @@ miss, and the symptom is a control that appears not to work.
    table designer, and find the table whose grid you want bars on.
 2. Open the table's **Controls** tab and add or select the **Power Apps grid
    control**.
-3. Set the **Customizer control** property to:
+3. Set the **Customizer control** property to this control's full logical
+   name.
+
+   The full logical name is `{publisher prefix}_{namespace}.{control name}`,
+   which for the shipped solution is:
 
    ```
-   pcfhu_PCFHub.GridDataBars
+   pcfhub_PCFHub.GridDataBars
    ```
 
 4. Save and publish.

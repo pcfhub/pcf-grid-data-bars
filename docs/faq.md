@@ -9,7 +9,7 @@ order: 8
 ## I imported the solution and nothing changed
 
 Importing installs the control; it does not switch it on. A customizer has to be
-named on a table's grid — **Customizer control** = `pcfhu_PCFHub.GridDataBars`
+named on a table's grid — **Customizer control** = `pcfhub_PCFHub.GridDataBars`
 — and until it is, the control is installed, inert, and logs nothing to say so.
 [Installation](installation.md) has the full path.
 

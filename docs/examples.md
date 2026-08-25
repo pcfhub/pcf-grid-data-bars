@@ -10,6 +10,11 @@ Every example here is a *column* configuration, not a control configuration.
 Grid Data Bars has no settings — what it draws is decided entirely by the range
 each column declares, so configuring it means choosing those two numbers well.
 
+::video{src=media/walkthrough.mp4 poster=media/walkthrough-poster.png}
+
+The first configuration below is the one in that recording: a `Decimal` column
+with a declared range of `0` to `100`.
+
 ## A percentage column
 
 The easy case, and the one to start with.

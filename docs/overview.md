@@ -14,6 +14,8 @@ value, scaled to the range the column itself declares, so the shape of the
 column is visible before any of it is read — which record is an outlier, which
 cluster sits near the floor, where the spread actually is.
 
+::image{src=media/screenshot.png alt="An Accounts view with a Score column declaring a range of 0 to 100. Each cell shows its number with a pale blue bar behind it, sized to the value: Gamma at 70.00 has the longest bar, Beta 30.00 and Delta 20.00 are shorter, Acme 10.00 and Epsilon 12.00 shorter still, and the row scoring 0.00 has no bar at all." zoom}
+
 ## Why this one
 
 - **It never invents a scale.** The bar is proportional to the `MinValue` and

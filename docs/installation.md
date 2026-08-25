@@ -63,3 +63,6 @@ If every cell looks ordinary:
 - Confirm the column has both a minimum and a maximum that differ from the
   defaults.
 - Confirm you are in a model-driven app. Canvas has no Power Apps grid.
+- Set `window.gridDataBarsDebug = true` in the browser console and reload. The
+  control then prints what it received per column and why it declined; see
+  [FAQ](faq.md).

@@ -7,7 +7,7 @@
   -->
   <control namespace="PCFHub"
            constructor="GridDataBars"
-           version="0.1.0"
+           version="0.2.0"
            display-name-key="GridDataBars_Name"
            description-key="GridDataBars_Desc"
            control-type="virtual">
@@ -73,22 +73,27 @@
     </resources>
 
     <!--
-      `context.utils.getEntityMetadata` is how a bar learns the range it is
-      proportional to, and it is gated behind this feature.
+      No feature-usage, and that is a finding rather than an omission.
 
-      `required="false"` on purpose. A required feature that the host does not
-      grant stops the control loading at all; this one has a defined behaviour
-      without it — every column misses its bounds, every renderer declines, and
-      the grid draws its own cells. That is the same output as a table whose
-      columns declare no ranges, so a customizer running where Utility is
-      unavailable is inert rather than broken.
+      A bar learns its range from the column's `MinValue`/`MaxValue`, and the
+      obvious way to read those is `context.utils.getEntityMetadata`, gated
+      behind `Utility`. That call does not carry them. Its attribute metadata
+      exposes `AttributeType`, `DisplayName`, `EntityLogicalName` and
+      `LogicalName` and nothing numeric — verified on a decimal column with both
+      ends set in the table designer, where both read `undefined`. The range
+      exists only on the typed Web API metadata entities, which the collection
+      has to be *cast* to before the properties can be named at all.
 
-      Utility is model-driven only, which is not a limitation this control adds:
-      the Customizer control property exists on the Power Apps grid, and canvas
-      has no Power Apps grid to put it on.
+      So the lookup is a same-origin `fetch` against `/api/data/v9.2/`, which
+      needs no declared feature: `context.webAPI` is gated, but it addresses
+      records by entity logical name and cannot reach `EntityDefinitions`.
+      Declaring a feature this control does not call would be a lie in the one
+      file an administrator reads to find out what it touches.
+
+      Where the request cannot succeed — no Dataverse behind the page, signed
+      out, a preview harness — every column misses its bounds, every renderer
+      declines, and the grid draws its own cells. That is the same output as a
+      table whose columns declare no ranges: inert rather than broken.
     -->
-    <feature-usage>
-      <uses-feature name="Utility" required="false" />
-    </feature-usage>
   </control>
 </manifest>

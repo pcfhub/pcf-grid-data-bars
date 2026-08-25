@@ -67,39 +67,83 @@ global.ComponentFramework = {
 };
 
 /*
- * The ranges the stubbed metadata declares.
+ * The table the stubbed Web API describes, keyed by the metadata type the
+ * control has to cast the attribute collection to before `MinValue` and
+ * `MaxValue` are readable at all.
  *
  * `unbounded` carries the Dataverse default range for a decimal, which is the
  * case this control is built to decline — and the one most likely to regress
  * quietly, since a control that stopped declining would simply start drawing
  * invisible bars on every numeric column in the environment.
  */
-const BOUNDS = {
-    creditlimit: { MinValue: 0, MaxValue: 250000 },
-    variance: { MinValue: -50, MaxValue: 50 },
-    unbounded: { MinValue: -100000000000, MaxValue: 100000000000 },
+const ATTRIBUTES = {
+    MoneyAttributeMetadata: [
+        { LogicalName: 'creditlimit', MinValue: 0, MaxValue: 250000 },
+        /*
+         * The range Dataverse actually ships on `account.creditlimit`, under a
+         * second name so both cases are covered at once.
+         *
+         * It is not the currency default, so no default check recognises it —
+         * read off a real environment, along with `0..1000000000` on
+         * `numberofemployees` and `-1..2147483647` on the timezone columns. A
+         * realistic value against it computes a bar millionths of a cell wide.
+         */
+        {
+            LogicalName: 'stockrange',
+            MinValue: 0,
+            MaxValue: 100000000000,
+        },
+    ],
+    DecimalAttributeMetadata: [
+        { LogicalName: 'variance', MinValue: -50, MaxValue: 50 },
+        {
+            LogicalName: 'unbounded',
+            MinValue: -100000000000,
+            MaxValue: 100000000000,
+        },
+    ],
 };
 
 let payload = null;
+let firings = 0;
+
+/** Every metadata URL this run requested. */
+const metadataCalls = [];
+
+/*
+ * The Web API, as far as this control is concerned.
+ *
+ * A stub of `fetch` rather than of `context.utils.getEntityMetadata`, because
+ * the control no longer calls that: the client API's attribute metadata
+ * carries no `MinValue`/`MaxValue`, and the properties exist only on the typed
+ * metadata entities the Web API can cast to. This answers only for the cast it
+ * was actually given, which is what makes the assertions below meaningful — a
+ * stub that answered every URL identically would pass a control that built the
+ * wrong one.
+ */
+global.fetch = (url) => {
+    metadataCalls.push(url);
+
+    const cast = /Microsoft\.Dynamics\.CRM\.(\w+)/.exec(url);
+    const value = (cast && ATTRIBUTES[cast[1]]) || [];
+
+    return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ value }),
+    });
+};
 
 const context = {
     parameters: { EventName: { raw: 'smoke-event' } },
     factory: {
         fireEvent: (name, fired) => {
             payload = fired;
+            firings++;
         },
         requestRender() {},
     },
-    utils: {
-        // `.get()` rather than a plain object, because that is the shape the
-        // platform returns — the public surface is prototype getters and a
-        // Map-like Attributes collection. A plain object here would let a
-        // control that walked it with Object.keys pass this file and fail on a
-        // real grid.
-        getEntityMetadata: () =>
-            Promise.resolve({ Attributes: { get: (column) => BOUNDS[column] } }),
-    },
     mode: { contextInfo: { entityTypeName: 'account' } },
+    page: { getClientUrl: () => 'https://contoso.crm.dynamics.com' },
     fluentDesignLanguage: { isDarkTheme: false },
 };
 
@@ -126,20 +170,111 @@ instance.updateView(context);
 
 check('control fired a payload', payload !== null);
 
+/*
+ * The ordering the whole control turns on, asserted before anything renders.
+ *
+ * Two earlier versions read the ranges from `context.utils.getEntityMetadata`,
+ * which answers only for columns named in the call — and a customizer does not
+ * learn its column names until the grid asks it to draw a cell. The request
+ * therefore could not start until after the first paint, and since nothing can
+ * make the grid repaint, the bars appeared only when a cell was clicked. The
+ * Web API needs only the table name, so the requests are already in flight
+ * here, before a single renderer has been called.
+ */
+check(
+    'asks for the ranges during init, before any cell is drawn',
+    metadataCalls.length === 4,
+    `${metadataCalls.length} request(s)`,
+);
+
 const colDefs = [
     { name: 'creditlimit', dataType: 'Currency', isPrimary: false },
     { name: 'variance', dataType: 'Decimal', isPrimary: false },
     { name: 'unbounded', dataType: 'Decimal', isPrimary: false },
+    { name: 'stockrange', dataType: 'Currency', isPrimary: false },
 ];
 
+const call = (renderers, type, value, columnIndex, extra) =>
+    renderers[type](
+        Object.assign(
+            {
+                value,
+                formattedValue: String(value),
+                columnDataType: type,
+                isRightAligned: true,
+                rowHeight: 42,
+                validationError: null,
+            },
+            extra,
+        ),
+        { colDefs, columnIndex, rowData: { __rec_id: '1' }, allowTabKeyNavigation: false },
+    );
+
 /*
- * A tick, because the bounds resolve from a promise. On a real grid nothing
- * waits like this — which is exactly the risk recorded in SPEC.md: if the
- * metadata has not landed by the first paint, every cell declines and the bars
- * appear only on the next natural re-render.
+ * A cell drawn while the answers are still travelling.
+ *
+ * It must not decline. A declined cell is the grid's own and this control never
+ * hears of it again, which is exactly how the "bars only appear when you click"
+ * bug worked. It keeps the cell, shows the value, and upgrades itself when the
+ * ranges land — so what comes back here is an element, and not a bar yet.
+ */
+const early = call((payload && payload.cellRendererOverrides) || {}, 'Currency', 125000, 0);
+
+check('keeps the cell while the ranges are in flight', early !== undefined);
+
+check(
+    'draws no bar until it knows the range',
+    early !== undefined && JSON.stringify(early).indexOf('GridDataBars-track') === -1,
+);
+
+/*
+ * A tick, because the ranges resolve from a promise. On a real grid nothing
+ * waits like this — the cells that mounted first find out through the
+ * subscription rather than by being asked again.
  */
 setTimeout(() => {
     const renderers = (payload && payload.cellRendererOverrides) || {};
+
+    // Four numeric types, so four requests: the cast that makes MinValue
+    // readable is per request, and each answers for every column of its type.
+    check(
+        'asks once per numeric type, not once per column',
+        metadataCalls.length === 4,
+        `${metadataCalls.length} request(s)`,
+    );
+
+    // The bug this file used to miss, in its current form. `MinValue` and
+    // `MaxValue` cannot even be named in a `$select` until the collection is
+    // cast, so a request without the cast returns attributes with no range on
+    // them — which is exactly what the client API was doing.
+    check(
+        'casts the attribute collection to the typed metadata entity',
+        metadataCalls.length > 0 &&
+            metadataCalls.every((url) =>
+                /\/Attributes\/Microsoft\.Dynamics\.CRM\.\w+AttributeMetadata\?/.test(
+                    url,
+                ),
+            ),
+        metadataCalls[0],
+    );
+
+    check(
+        'selects the range, and scopes the query to this table',
+        metadataCalls.every(
+            (url) =>
+                url.includes('$select=LogicalName,MinValue,MaxValue') &&
+                url.includes("EntityDefinitions(LogicalName='account')"),
+        ),
+    );
+
+    // Once, from init. Re-firing was tried as a way to make the grid repaint
+    // for a late answer; the grid takes the payload and draws nothing new, so
+    // the mechanism is gone and this guards its return.
+    check(
+        'hands the grid its payload exactly once',
+        firings === 1,
+        `${firings} firing(s)`,
+    );
 
     const call = (type, value, columnIndex, extra) =>
         renderers[type](
@@ -202,6 +337,24 @@ setTimeout(() => {
     );
 
     check('declines a column whose range is the platform default', call('Decimal', 5, 2) === undefined);
+
+    // A declared range that no default check can recognise, against a value a
+    // real record would hold: 40,000 of 100 billion is 0.00004% of the track,
+    // which rounds away to nothing. Drawing it would announce "0% of column
+    // range" on a column nobody customized.
+    check(
+        'declines when the bar would round away to nothing',
+        call('Currency', 40000, 3) === undefined,
+    );
+
+    // The same column, at a value that does fill some of the track. The
+    // suppression above is per cell, so this must still draw.
+    check(
+        'still draws where that column holds a value big enough to see',
+        barOf(call('Currency', 30000000000, 3)) !== undefined,
+        barOf(call('Currency', 30000000000, 3)) &&
+            JSON.stringify(barOf(call('Currency', 30000000000, 3)).props.style),
+    );
     check('declines an unset value', call('Currency', null, 0) === undefined);
     check(
         'declines a cell carrying a validation error',
@@ -214,6 +367,46 @@ setTimeout(() => {
         'the accessible label carries the proportion, not just the value',
         /50% of column range/.test(labelled.props['aria-label']),
         labelled.props['aria-label'],
+    );
+
+    /*
+     * The interactions the replaced cell was carrying.
+     *
+     * An element returned from a renderer replaces the grid's own cell *and its
+     * behaviour*. Row selection survives because the grid owns the row, so the
+     * cell still highlights and takes a focus ring and looks completely alive —
+     * while being unable to open an editor. Nothing about that is visible in a
+     * screenshot or a rendered harness, which is why it is asserted here.
+     */
+    let clicked = 0;
+    let editing = 0;
+
+    const interactive = call('Currency', 125000, 0, {
+        columnEditable: true,
+        onCellClicked: () => {
+            clicked++;
+        },
+        startEditing: () => {
+            editing++;
+        },
+    });
+
+    interactive.props.onClick?.();
+    interactive.props.onDoubleClick?.();
+
+    check('forwards the click the grid needs to hear about', clicked === 1);
+    check('opens the editor on double-click when the column is editable', editing === 1);
+
+    const readOnly = call('Currency', 125000, 0, {
+        columnEditable: false,
+        startEditing: () => {
+            editing++;
+        },
+    });
+
+    check(
+        'offers no edit gesture on a column that is not editable',
+        readOnly.props.onDoubleClick === undefined,
     );
 
     report();

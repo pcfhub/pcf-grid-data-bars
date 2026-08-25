@@ -1,5 +1,11 @@
 import * as React from 'react';
-import { Bounds, boundsFor } from '../metadata/ColumnBounds';
+import {
+    Bounds,
+    NUMERIC_TYPES,
+    boundsFor,
+    isResolved,
+    subscribeToBounds,
+} from '../metadata/ColumnBounds';
 import {
     CellRendererOverrides,
     CellRendererProps,
@@ -21,8 +27,10 @@ import {
  * The four platform rules shape everything here:
  *
  *   1. **Return undefined to decline**, and this control declines a lot — every
- *      unbounded column, every unset value, every cell drawn before the
- *      metadata resolves. That is the design working, not failing.
+ *      unbounded column, every unset value. That is the design working, not
+ *      failing. What it must *not* decline is a cell whose range has simply not
+ *      arrived yet: a declined cell belongs to the grid, and nothing here can
+ *      ask for it back. See `PendingCell`.
  *   2. **These functions must be pure.** No state, no caching, no writing to
  *      the record. `boundsFor` is a read.
  *   3. **Never render a different value than the cell holds.** The bar is drawn
@@ -33,21 +41,9 @@ import {
  *      below is four arithmetic operations and no text measurement.
  */
 
-/** Column types whose values are numbers with a declarable range. */
-const NUMERIC_TYPES: ColumnDataType[] = [
-    'Integer',
-    'Decimal',
-    'FloatingPoint',
-    'Currency',
-];
-
 /*
- * `Duration` is deliberately absent. Its raw value is a count of minutes and
- * its metadata range describes that count, so a bar drawn from it would be
- * proportional to something the cell does not display — the cell reads
- * "1 hour" and the bar measures 60. That is rule 3, and the fix is not a
- * formatting change: durations are read as durations, not as positions in a
- * range, so the visual does not fit the column even where the numbers do.
+ * `NUMERIC_TYPES` — the four types overridden below, and why `Duration` is not
+ * among them — lives in `../metadata/ColumnBounds` with the ranges it selects.
  */
 
 export const cellRendererOverrides: CellRendererOverrides = Object.fromEntries(
@@ -89,24 +85,172 @@ function renderDataBar(
 
     const bounds = boundsFor(column.name, dataType);
 
+    // Declines on its own account when the bar would round to nothing, which is
+    // why its result is returned rather than assumed to be an element.
+    if (bounds) {
+        return barCell(props, bounds);
+    }
+
     // No declared range: nothing to be proportional to. This is the common
     // case, not the exception — see `isPlatformDefault` in ColumnBounds.ts.
-    if (!bounds) {
+    if (isResolved()) {
         return undefined;
     }
 
-    const geometry = barGeometry(props.value, bounds);
-    const text = props.formattedValue ?? String(props.value);
+    // The ranges are still in flight. Declining here is what the first two
+    // versions of this control did, and it is the wrong answer: a declined cell
+    // is the grid's own, this control never hears of it again, and nothing can
+    // ask for a repaint when the answer lands — so the bar appeared only when
+    // the user happened to click the cell. Keeping the cell keeps a handle on
+    // it. See `PendingCell`.
+    return <PendingCell cell={props} column={column.name} dataType={dataType} />;
+}
 
+interface PendingCellProps {
+    readonly cell: CellRendererProps;
+    readonly column: string;
+    readonly dataType: ColumnDataType;
+}
+
+/**
+ * Everything the cell this one replaced was doing besides drawing.
+ *
+ * A renderer that returns an element replaces the grid's own cell *and its
+ * interactions*. Row selection survives, because the grid owns the row — which
+ * is what makes this so easy to miss: the cell highlights, takes a focus ring,
+ * and looks entirely alive. What is gone is editing. The user clicks a value
+ * they can see is editable and nothing opens, on every customized column, with
+ * nothing logged.
+ *
+ * The contract provides for exactly this and it is the reason these three
+ * fields exist on `CellRendererProps`. `onCellClicked` is documented as
+ * "callback indicating the grid cell has been clicked" — a renderer that draws
+ * its own element is the only thing that can raise it. `startEditing` opens the
+ * editor directly, and `columnEditable` says whether there is one to open.
+ *
+ * Both gestures are wired. Forwarding the click is the contract-driven half;
+ * the double-click is belt and braces, because which gesture the grid turns
+ * into an edit is its own business and may differ between a read-only grid with
+ * inline editing and one with *Enable editing* set. `startEditing` on a cell
+ * already editing is a no-op, so the overlap costs nothing.
+ *
+ * No keyboard handling here on purpose. The grid owns cell focus and keyboard
+ * navigation at the row level — Enter and F2 never reached this element — and
+ * adding a tabbable element inside a grid cell would put a second stop in a
+ * roving-tabindex surface this control does not own.
+ */
+function cellHandlers(props: CellRendererProps): {
+    className: string;
+    onClick?: (event: React.MouseEvent<HTMLDivElement>) => void;
+    onDoubleClick?: () => void;
+} {
     // The grid right-aligns numeric columns and says so. Ignoring it leaves the
     // column most likely to be aligned as the only one that is not — a ragged
     // edge against every untouched numeric column beside it. The *bar* still
     // grows from its own baseline; it is the text that moves.
     const alignment = props.isRightAligned ? ' GridDataBars-right' : '';
 
+    return {
+        className: `GridDataBars-cell${alignment}`,
+        onClick: props.onCellClicked,
+        onDoubleClick: props.columnEditable
+            ? () => props.startEditing?.()
+            : undefined,
+    };
+}
+
+/** The platform's own string for the value, never one this control formats. */
+function textOf(props: CellRendererProps): string {
+    return props.formattedValue ?? String(props.value);
+}
+
+/**
+ * A cell that draws its value now and its bar when the range arrives.
+ *
+ * Only mounted for the race, and the race should usually be lost by the
+ * network: `resolveBounds` runs in `init`, well before the grid asks for a
+ * cell, so on most loads the ranges are already in hand and `renderDataBar`
+ * never gets here. This is what happens when they are not.
+ *
+ * It renders the platform's own `formattedValue` and nothing else, so a cell
+ * waiting is a cell that looks untouched. When the answer says this column has
+ * no range the text is all it will ever draw — very slightly *less* than the
+ * grid's own cell would, until the next natural re-render replaces it — and
+ * that is the trade this makes: a brief plain cell on unbounded columns, in
+ * exchange for bars that appear on bounded ones without being clicked on.
+ *
+ * A hook in a cell renderer is safe here for the reason the manifest declares
+ * React as a `platform-library`: the element is rendered by the host's React
+ * instance, so its hooks dispatch through the same one that mounted it.
+ */
+function PendingCell(props: PendingCellProps): React.ReactElement {
+    const [, redraw] = React.useState(0);
+
+    React.useEffect(() => {
+        // The answer can land between this render and this effect, in which
+        // case there is no notification coming and the cell has to look again.
+        if (isResolved()) {
+            redraw((count) => count + 1);
+
+            return undefined;
+        }
+
+        return subscribeToBounds(() => redraw((count) => count + 1));
+    }, []);
+
+    const bounds = boundsFor(props.column, props.dataType);
+    const bar = bounds && barCell(props.cell, bounds);
+
+    // A cell that cannot decline, so an invisible bar falls back to the plain
+    // value rather than to the grid's own cell. Same pixels either way — and
+    // the same interactions, which is why this carries the handlers too.
+    return (
+        bar ?? (
+            <div {...cellHandlers(props.cell)}>
+                <span className="GridDataBars-value">{textOf(props.cell)}</span>
+            </div>
+        )
+    );
+}
+
+/**
+ * The bar, or nothing when there would be no bar to see.
+ *
+ * A range can be declared and still be useless: Dataverse ships columns whose
+ * ranges nobody chose and which no default check can recognise — `creditlimit`,
+ * `revenue` and `marketcap` declare `0..100000000000`, `numberofemployees`
+ * declares `0..1000000000`, `utcconversiontimezonecode` declares
+ * `-1..2147483647`. Those are not the type's defaults, so `isPlatformDefault`
+ * passes them, and a real value against them computes a bar some millionth of a
+ * cell wide.
+ *
+ * Suppressing that is not about the pixels — a bar rounded to `0%` is already
+ * invisible, and declining draws the identical cell. It is about the accessible
+ * label. Rendering announces "40,000. 0% of column range." on a column nobody
+ * customized, which is worse than saying nothing: it tells a screen-reader user
+ * this column has a meaningful scale and that this value sits at the bottom of
+ * it. Neither is true.
+ *
+ * The cost is a value sitting exactly at its column's minimum, in a range that
+ * *is* meaningful. It stops announcing a truthful "0%" and draws the grid's own
+ * cell instead. That case looks the same on screen either way, and it is the
+ * cheaper thing to lose.
+ */
+function barCell(
+    props: CellRendererProps,
+    bounds: Bounds,
+): React.ReactElement | undefined {
+    const geometry = barGeometry(props.value as number, bounds);
+
+    if (!geometry.visible) {
+        return undefined;
+    }
+
+    const text = textOf(props);
+
     return (
         <div
-            className={`GridDataBars-cell${alignment}`}
+            {...cellHandlers(props)}
             // Bar length is exactly as inaccessible as colour on its own. A
             // screen-reader user is scanning this column for the same outliers
             // a sighted user picks out by width, so the proportion is spoken.
@@ -132,6 +276,8 @@ interface BarGeometry {
     readonly negative: boolean;
     /** Share of the track the bar covers, for the accessible label. */
     readonly percent: number;
+    /** Whether the bar has any width left after rounding — see `barCell`. */
+    readonly visible: boolean;
 }
 
 /**
@@ -161,12 +307,14 @@ function barGeometry(value: number, bounds: Bounds): BarGeometry {
 
     const left = Math.min(baselineFraction, valueFraction);
     const width = Math.abs(valueFraction - baselineFraction);
+    const drawn = percentage(width);
 
     return {
         left: `${percentage(left)}%`,
-        width: `${percentage(width)}%`,
+        width: `${drawn}%`,
         negative: valueFraction < baselineFraction,
         percent: Math.round(width * 100),
+        visible: drawn > 0,
     };
 }
 

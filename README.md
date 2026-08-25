@@ -27,8 +27,8 @@ before the largest value appeared — and uncorrectable, because
 grid to re-render.
 
 So the domain comes from the column's own `MinValue`/`MaxValue` attribute
-metadata, fetched once at startup, and a column whose range is still the
-Dataverse default gets no bar at all. That is most numeric columns on most
+metadata — read once for the whole table when the grid starts — and a column
+whose range is still the Dataverse default gets no bar at all. That is most numeric columns on most
 tables, and it is the first thing to know before installing this: bars are
 opt-in by way of an admin setting a real range on the column, and there is no
 setting on the control that overrides it. `docs/limitations.md` says so first
@@ -38,8 +38,13 @@ Two consequences look like bugs and are not. **The control has no visible output
 of its own** — `updateView` returns an empty fragment, and a customizer dropped
 on a form does nothing at all, correctly. And **returning `undefined` from a
 renderer is the documented way to say "this cell is fine as it is"**, which is
-also the only correct answer to a validation error, an unset value, and every
-cell drawn before the metadata lands.
+also the only correct answer to a validation error, an unset value, and an
+unbounded column.
+
+It is *not* the right answer to a cell drawn before the ranges arrive, and that
+distinction cost two versions to learn: a declined cell belongs to the grid,
+this control never hears of it again, and nothing a customizer holds can ask
+for a repaint. Such a cell keeps itself and redraws when the answer lands.
 
 ## Properties
 
@@ -57,12 +62,17 @@ The control is configured by being *named* on a grid rather than by having
 values set on it, and what it draws is decided by each column's declared range.
 See `docs/installation.md` for where that name goes.
 
-One `uses-feature` permission is requested: **`Utility`**, declared
-`required="false"`, for `context.utils.getEntityMetadata`. Optional rather than
-required because the control has a defined behaviour without it — every column
-misses its bounds, every renderer declines, and the grid draws its own cells —
-so a host that does not grant it gets an inert control rather than one that
-fails to load. No Web API, no device, no navigation.
+No `uses-feature` permissions are requested, which took a finding to arrive at.
+The obvious source for a column's range is `context.utils.getEntityMetadata`,
+gated behind `Utility` — but that call's attribute metadata carries no
+`MinValue`/`MaxValue`; the range exists only on the typed Web API metadata
+entities, and reading it means casting the attribute collection to one. So the
+lookup is a same-origin `fetch` against `/api/data/v9.2/`, which no feature
+gates. `context.webAPI` is not a route to it either — it addresses records by
+entity logical name and cannot reach `EntityDefinitions`. Where the request
+cannot succeed the control is inert rather than broken: every column misses its
+bounds, every renderer declines, and the grid draws its own cells. No device,
+no navigation.
 
 Localisation: `en-US` (LCID 1033) only. React 16.14.0 and Fluent 8.121.1 are
 declared as `<platform-library>` entries, so neither is bundled — the elements
@@ -133,7 +143,7 @@ from the hourly sweep otherwise. A sync imports a draft; a person publishes it.
 | --- | --- |
 | `GridDataBars/` | The control: manifest, entry point, CSS, localised strings |
 | `GridDataBars/customizers/` | The cell renderers the grid calls per cell |
-| `GridDataBars/metadata/` | The attribute-metadata prefetch the bars are scaled to |
+| `GridDataBars/metadata/` | The attribute-metadata lookup the bars are scaled to |
 | `Solution/` | The Dataverse solution that packages it |
 | `SPEC.md` | What building this corrected, and what is verified versus read |
 | `docs/` | The pages PCFHub publishes — see the comments in each file |

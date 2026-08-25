@@ -46,7 +46,11 @@ export class GridDataBars
      *
      * The grid registers one customizer per grid and this control has exactly
      * one payload to give it, so firing twice would re-register the same
-     * overrides against a host that never asked for them again.
+     * overrides against a host that never asked for them again — and, as it
+     * turned out, achieves nothing anyway. A second firing does not make the
+     * grid repaint; that was tried, on a real grid, precisely so that a late
+     * metadata answer could reach cells already on screen. See `PendingCell` in
+     * the cell renderers for what does.
      */
     private fired = false;
 
@@ -55,10 +59,12 @@ export class GridDataBars
         this.fire(context);
         this.publishTheme(context);
 
-        // Start the metadata fetch the bars are proportional to. Latched inside,
-        // and nothing waits on it: the renderers are synchronous and decline
-        // until it lands, which draws the grid's own cell — the same output as
-        // a column that declares no range. See metadata/ColumnBounds.ts.
+        // Read the table's declared ranges. Here rather than from the first
+        // cell, and that ordering is the difference between bars that appear
+        // and bars that appear when you click on them: the lookup needs only
+        // the table name, which this context has, so it can be in flight long
+        // before the grid asks for a cell. Nothing waits on it — the renderers
+        // are synchronous. See metadata/ColumnBounds.ts.
         resolveBounds(context);
     }
 

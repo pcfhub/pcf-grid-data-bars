@@ -17,11 +17,20 @@ order: 7
   for a column, set its Minimum and Maximum values in the table designer; see
   [Examples](examples.md).
 
+  Stock Dataverse columns are covered too, by a second rule. Several ship with
+  ranges nobody chose that are not their type's default either — `creditlimit`,
+  `revenue` and `marketcap` declare a maximum of one hundred billion,
+  `numberofemployees` one billion — so no default check recognises them. Any
+  cell whose bar would round away to nothing is declined on its own, which
+  leaves those columns looking untouched while still drawing a bar on the rare
+  record whose value is genuinely large.
+
 - **Model-driven apps only.** It is assigned through the Power Apps grid
   control's *Customizer control* property, which canvas apps do not have. It
-  also reads attribute metadata through the `Utility` feature, which is
-  model-driven only. Where that feature is unavailable the control is inert
-  rather than broken — every column declines and the grid looks untouched.
+  also reads each column's range from the Dataverse metadata service, which
+  means a signed-in session against a Dataverse organisation. Where that lookup
+  cannot succeed the control is inert rather than broken — every column declines
+  and the grid looks untouched.
 
 - **Whole number, decimal, floating point and currency, and nothing else.**
   Duration columns are deliberately excluded: their raw value is a count of

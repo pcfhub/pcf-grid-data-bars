@@ -1,6 +1,6 @@
 {
   "name": "pcf-grid-data-bars",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "In-cell proportional bars for bounded numeric columns on the Power Apps grid.",
   "license": "MIT",
   "private": true,

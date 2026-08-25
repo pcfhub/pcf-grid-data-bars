@@ -24,6 +24,19 @@ it as one.
 If both are set, check the column's type: only whole number, decimal, floating
 point and currency draw bars.
 
+If both of those look right, ask the control what it saw. In the browser
+console, before loading the view:
+
+```js
+window.gridDataBarsDebug = true;
+```
+
+Reload, and the control prints one row per numeric column — the `MinValue` and
+`MaxValue` it received, and whether it drew a bar or why it did not. That
+separates the three causes which otherwise look identical on screen: the
+metadata never arrived, the metadata carries no range, or the range is there
+and was rejected as a platform default.
+
 ## Why do I have to set both ends? I only care about the maximum
 
 Because a range is two numbers, and picking the other one for you would be this
@@ -44,9 +57,13 @@ degrades to an outline under Windows high contrast.
 
 ## Does it slow the grid down?
 
-The per-cell work is a metadata lookup and four arithmetic operations, with no
-text measurement and no layout read. The entity's metadata is fetched once when
-the grid starts, not per cell or per page.
+The per-cell work is a map lookup and four arithmetic operations, with no text
+measurement and no layout read.
+
+The column ranges behind it are read once when the grid starts — four small
+metadata requests, one per numeric column type, each covering every column of
+that type on the table. Not per cell, not per page, not again when you scroll,
+and not again when you add a column to the view.
 
 ## Will it show a bar for a value bigger than the maximum?
 

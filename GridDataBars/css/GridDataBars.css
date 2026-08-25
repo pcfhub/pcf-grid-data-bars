@@ -1,0 +1,166 @@
+/*
+ * Every rule is scoped under a `GridDataBars-` class, and that is not a naming
+ * preference: these cells are mounted *inside somebody else's grid*, which owns
+ * the row, the cell box, the selection state and the focus ring. A bare element
+ * selector here would restyle the host — and unlike a field control, where the
+ * blast radius is one form, a customizer is assigned to every view of a table.
+ *
+ * Colours are literal rather than Fluent theme tokens. A cell renderer is
+ * mounted per cell with no provider above it, so there is no theme context to
+ * read from — see the manifest's platform-library comment.
+ *
+ * They are literal, but they are not fixed. The custom properties below are
+ * what the rules read, and the blocks at the foot of the file redefine them for
+ * dark and for forced colours. The dark palette is selected by the *host's*
+ * theme, published onto `:root` by `publishTheme` in index.ts — not by
+ * `@media (prefers-color-scheme: dark)`, which asks the operating system a
+ * question only the app can answer.
+ */
+
+:root {
+    /* Fluent's themePrimary at low alpha. Alpha rather than a flat tint so the
+       bar sits over whatever the grid painted underneath — row banding, hover,
+       and the selection highlight all survive it. A solid colour here would
+       erase the selected-row background on exactly the row the user is looking
+       at. */
+    --GridDataBars-fill: rgba(0, 120, 212, 0.28);
+
+    /* Negatives read as a different thing, not a worse one, so this is a hue
+       change rather than an alarm colour: Fluent's #a4262c at the same alpha.
+       It is never the only signal — the bar's side of the baseline says it
+       too, and the accessible label says it in words. */
+    --GridDataBars-fill-negative: rgba(164, 38, 44, 0.28);
+
+    /* Invisible by default. Forced colours turn this into the bar's only
+       remaining signal; see the block at the foot of the file. */
+    --GridDataBars-edge: transparent;
+}
+
+/*
+ * The positioning context for the track. `relative` on the cell rather than on
+ * the track itself, because the track is what is absolutely positioned and it
+ * needs an ancestor box that matches the cell exactly.
+ */
+.GridDataBars-cell {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    margin: 0;
+    font-weight: 400;
+    /* The cell already sets the row's line box; matching it keeps a customized
+       cell the same height as an untouched one beside it. */
+    line-height: inherit;
+}
+
+/*
+ * The bar's coordinate space, inset from the row rather than filling it.
+ *
+ * `top`/`bottom` insets rather than a height computed from the contract's
+ * `rowHeight`: an absolutely positioned track adapts to whatever height the
+ * grid actually drew, including row heights the control never sees and any the
+ * platform adds later. Reading `rowHeight` and setting a pixel height would be
+ * strictly more code that is wrong in more cases.
+ */
+.GridDataBars-track {
+    position: absolute;
+    top: 3px;
+    right: 0;
+    bottom: 3px;
+    left: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.GridDataBars-bar {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    background-color: var(--GridDataBars-fill);
+    border: 1px solid var(--GridDataBars-edge);
+    border-radius: 2px;
+}
+
+.GridDataBars-negative {
+    background-color: var(--GridDataBars-fill-negative);
+}
+
+/*
+ * Above the bar, and given its own stacking context so the text is never
+ * tinted by the fill behind it.
+ */
+.GridDataBars-value {
+    position: relative;
+    z-index: 1;
+}
+
+/*
+ * Apply this when the grid says a column is right-aligned, which it does for
+ * numeric columns via `props.isRightAligned`. `flex-end` rather than
+ * `text-align`, because the cell is a flex container — and flex-end follows the
+ * inherited `direction`, so an RTL grid gets this right without the renderer
+ * reading `isRTLMode`.
+ *
+ * Only the text moves. The bar is positioned against the track in percentages
+ * from its own baseline, so it is unaffected by where the number sits — which
+ * is what makes the standard data-bar layout work: values aligned on the right,
+ * bars aligned against each other on the left.
+ */
+.GridDataBars-right {
+    justify-content: flex-end;
+}
+
+/*
+ * Dark, chosen by the host rather than by the operating system.
+ *
+ * The alpha fills above are already surface-agnostic — that is most of why they
+ * are alphas — but they are mixed against Fluent's dark neutral (#292827) here
+ * rather than against white, and at 0.28 over near-black they all but vanish.
+ * Raising the alpha is the whole adjustment; the hues are unchanged, so a
+ * user switching themes sees the same column mean the same thing.
+ *
+ * The two blocks below carry the same palette twice and have to stay in step.
+ * That duplication is the standard shape for a three-state theme: the attribute
+ * wins wherever the host published one, and the media query covers only the
+ * hosts that published nothing — `fluentDesignLanguage` is typed as Fluent v9
+ * data and a customizer declares Fluent 8, so it may never arrive.
+ */
+:root[data-pcf-grid-data-bars-theme='dark'] {
+    --GridDataBars-fill: rgba(89, 174, 255, 0.36);
+    --GridDataBars-fill-negative: rgba(246, 122, 128, 0.36);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-pcf-grid-data-bars-theme]) {
+        --GridDataBars-fill: rgba(89, 174, 255, 0.36);
+        --GridDataBars-fill-negative: rgba(246, 122, 128, 0.36);
+    }
+}
+
+/*
+ * Windows high contrast.
+ *
+ * Forced colours replace every background in this file with a system one, so
+ * the two fills collapse into a single indistinguishable block — and a bar
+ * whose only remaining signal is "there is a rectangle here" is worse than no
+ * bar, because it still covers the row.
+ *
+ * So the meaning moves to shape. The fill is dropped entirely and the bar
+ * becomes an outline, which forced colours preserve: length still reads,
+ * the baseline still reads, and the negative case is distinguished by a dashed
+ * edge rather than by hue. `forced-color-adjust: none` is deliberately not used
+ * — overriding the user's palette is the thing this mode exists to prevent.
+ */
+@media (forced-colors: active) {
+    .GridDataBars-bar {
+        background-color: transparent;
+        border-color: CanvasText;
+    }
+
+    .GridDataBars-negative {
+        background-color: transparent;
+        border-style: dashed;
+    }
+}

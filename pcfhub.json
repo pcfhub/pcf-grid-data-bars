@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+
+  "slug": "pcf-grid-data-bars",
+  "name": "Grid Data Bars",
+  "tagline": "In-cell proportional bars for bounded numeric columns on the Power Apps grid.",
+  "category": "grids",
+  "tags": [],
+
+  "control": {
+    "namespace": "PCFHub",
+    "constructor": "GridDataBars",
+    "type": "virtual",
+    "framework": "react_virtual",
+    "manifestPath": "GridDataBars/ControlManifest.Input.xml"
+  },
+
+  "links": {
+    "homepage": "https://github.com/pcfhub/pcf-grid-data-bars",
+    "support": "https://github.com/pcfhub/pcf-grid-data-bars/issues",
+    "license": "MIT"
+  },
+
+  "docs": {
+    "path": "docs"
+  },
+
+  "media": {
+    "logo": "media/logo.png",
+    "screenshots": []
+  },
+
+  "demo": {
+    "fidelity": "none",
+    "host": "grid",
+    "presets": []
+  }
+}

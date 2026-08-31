@@ -10,7 +10,7 @@
   "control": {
     "namespace": "PCFHub",
     "constructor": "GridDataBars",
-    "type": "virtual",
+    "type": "grid_customizer",
     "framework": "react_virtual",
     "manifestPath": "GridDataBars/ControlManifest.Input.xml"
   },

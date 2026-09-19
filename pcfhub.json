@@ -5,6 +5,7 @@
   "name": "Grid Data Bars",
   "tagline": "In-cell proportional bars for bounded numeric columns on the Power Apps grid.",
   "category": "grids",
+  "hosts": ["model-driven"],
   "tags": [],
 
   "control": {

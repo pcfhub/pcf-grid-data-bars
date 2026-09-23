@@ -14,7 +14,9 @@
     "start": "pcf-scripts start",
     "refreshTypes": "pcf-scripts refreshTypes",
     "smoke": "node dev/smoke.js",
-    "lint": "eslint GridDataBars --ext .ts,.tsx"
+    "lint": "eslint GridDataBars --ext .ts,.tsx",
+    "bump": "node scripts/version.mjs",
+    "release": "node scripts/release.mjs"
   },
   "devDependencies": {
     "@fluentui/react": "8.121.1",

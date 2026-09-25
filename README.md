@@ -5,6 +5,8 @@ In-cell proportional bars for bounded numeric columns on the Power Apps grid.
 [![Build](https://github.com/pcfhub/pcf-grid-data-bars/actions/workflows/build.yml/badge.svg)](https://github.com/pcfhub/pcf-grid-data-bars/actions/workflows/build.yml)
 [![Release](https://github.com/pcfhub/pcf-grid-data-bars/actions/workflows/release.yml/badge.svg)](https://github.com/pcfhub/pcf-grid-data-bars/actions/workflows/release.yml)
 
+[![View on PCFHub](https://pcfhub.dev/badges/view-on-pcfhub.svg)](https://pcfhub.dev/components/pcf-grid-data-bars)
+
 Documentation lives on [PCFHub](https://pcfhub.dev/components/pcf-grid-data-bars), built
 from the `docs/` directory in this repository. Edit the Markdown here; the hub
 recompiles it.

@@ -51,23 +51,44 @@ contract before writing code, not by the compiler afterwards.
 
 ## Demo
 
-`fidelity: "none"`, and it is not a placeholder.
+`fidelity: "mocked"` since 2026-09-28.
 
-The hub's grid harness renders a grid over a dataset fixture, and a fixture
-carries no attribute metadata — nothing for `MinValue`/`MaxValue` to come from.
-Every column would therefore miss its bounds and every renderer would decline,
-so a demo of this control would be a grid of perfectly ordinary cells: a demo
-that loads correctly, works correctly, and shows nothing this component does.
+**Until then it was `none`, and that was not a placeholder.** A fixture carried
+no attribute metadata and the grid harness had no Dataverse behind it. So every
+metadata request failed, every renderer declined, and a demo would have been a
+grid of perfectly ordinary cells.
 
-That the ranges now come from the Web API rather than `getEntityMetadata` does
-not change this. The harness has no Dataverse behind it either, so the metadata
-request fails the same way the old call answered nothing — and the control does
-the correct thing in both cases, which is to draw the grid's own cells.
+pcfhub/pcfhub#52 changed both halves:
 
-So the page carries media instead: `media/screenshot.png` on the overview, and
-`media/walkthrough.mp4` on the examples page. That is the honest answer until
-the harness can carry column metadata, and the reason `fidelity` stays at
-`none` rather than being a placeholder nobody revisited.
+- a fixture can describe its columns;
+- a grid host gets its fixture's stand-in Dataverse, so `page.getClientUrl()`
+  and the fetch routes, including
+  `EntityDefinitions(…)/Attributes/Microsoft.Dynamics.CRM.<Type>AttributeMetadata`
+  with `$select=LogicalName,MinValue,MaxValue`.
+
+`demo/records.json` is an account grid. `dataverse.record` sets
+`mode.contextInfo.entityTypeName`, which is where this control reads its table
+name. Three columns declare a range: Credit limit 0–500,000, Satisfaction
+0–10 and Win probability 0–100. Two are left at the platform defaults this
+control recognises: Annual revenue at the Money range, and Employees at the
+Integer range.
+
+It was checked with 0.2.0's published bundle against that harness, before the
+push:
+
+- the four cast requests (`Integer`, `Decimal`, `Double`, `Money`) were
+  answered;
+- Fabrikam drew bars of 84%, 90% and 85%;
+- Annual revenue and Employees declined and kept the grid's own cells.
+
+**What the stand-in does not model:**
+
+- **Formatting.** The harness's grid hands a renderer the stored value as its
+  `formattedValue`, so a currency prints as `420000`.
+- **The Power Apps grid itself.**
+
+The media stay: `media/screenshot.png` and `media/walkthrough.mp4` are the real
+grid.
 
 ## Settled on a real grid
 

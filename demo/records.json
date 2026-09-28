@@ -1,0 +1,42 @@
+{
+    "targetEntityType": "account",
+    "title": "Active Accounts",
+    "columns": [
+        { "name": "name", "displayName": "Account name", "dataType": "SingleLine.Text", "alias": "name", "order": 0, "visualSizeFactor": 200, "isPrimary": true },
+        { "name": "creditlimit", "displayName": "Credit limit", "dataType": "Currency", "alias": "creditlimit", "order": 1, "visualSizeFactor": 140 },
+        { "name": "cr123_satisfaction", "displayName": "Satisfaction", "dataType": "Whole.None", "alias": "cr123_satisfaction", "order": 2, "visualSizeFactor": 120 },
+        { "name": "cr123_winprobability", "displayName": "Win probability", "dataType": "Decimal", "alias": "cr123_winprobability", "order": 3, "visualSizeFactor": 130 },
+        { "name": "revenue", "displayName": "Annual revenue", "dataType": "Currency", "alias": "revenue", "order": 4, "visualSizeFactor": 140 },
+        { "name": "numberofemployees", "displayName": "Employees", "dataType": "Whole.None", "alias": "numberofemployees", "order": 5, "visualSizeFactor": 110 }
+    ],
+    "records": [
+        { "id": "a0001", "values": { "name": "Fabrikam Manufacturing", "creditlimit": 420000, "cr123_satisfaction": 9, "cr123_winprobability": 85, "revenue": 2450000, "numberofemployees": 1200 } },
+        { "id": "a0002", "values": { "name": "Contoso Logistics", "creditlimit": 150000, "cr123_satisfaction": 7, "cr123_winprobability": 60, "revenue": 1875000, "numberofemployees": 640 } },
+        { "id": "a0003", "values": { "name": "Northwind Traders", "creditlimit": 50000, "cr123_satisfaction": 4, "cr123_winprobability": 35, "revenue": 960000, "numberofemployees": 210 } },
+        { "id": "a0004", "values": { "name": "Adventure Works Cycles", "creditlimit": 300000, "cr123_satisfaction": 8, "cr123_winprobability": 70, "revenue": 3120000, "numberofemployees": 880 } },
+        { "id": "a0005", "values": { "name": "Litware Consulting", "creditlimit": 25000, "cr123_satisfaction": 3, "cr123_winprobability": 15, "revenue": 540000, "numberofemployees": 45 } },
+        { "id": "a0006", "values": { "name": "Tailspin Toys", "creditlimit": 90000, "cr123_satisfaction": 6, "cr123_winprobability": 50, "revenue": 415000, "numberofemployees": 120 } },
+        { "id": "a0007", "values": { "name": "Proseware Systems", "creditlimit": 210000, "cr123_satisfaction": 5, "cr123_winprobability": 40, "revenue": 1290000, "numberofemployees": 390 } },
+        { "id": "a0008", "values": { "name": "Wingtip Analytics", "creditlimit": 480000, "cr123_satisfaction": 10, "cr123_winprobability": 95, "revenue": 780000, "numberofemployees": 75 } }
+    ],
+    "dataverse": {
+        "record": {
+            "entityType": "account",
+            "id": "00000000-0000-0000-0000-000000000000"
+        },
+        "tables": {
+            "account": {
+                "entitySet": "accounts",
+                "primaryId": "accountid",
+                "primaryName": "name",
+                "columns": {
+                    "creditlimit": { "minValue": 0, "maxValue": 500000 },
+                    "cr123_satisfaction": { "minValue": 0, "maxValue": 10 },
+                    "cr123_winprobability": { "minValue": 0, "maxValue": 100 },
+                    "revenue": { "minValue": -922337203685477, "maxValue": 922337203685477 },
+                    "numberofemployees": { "minValue": -2147483648, "maxValue": 2147483647 }
+                }
+            }
+        }
+    }
+}

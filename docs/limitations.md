@@ -54,8 +54,10 @@ order: 7
   Grid Data Bars alongside another customizer means merging both sets of
   overrides into one control.
 
-- **No demo on this page.** The hub's demo harness stands up a grid over a
-  fixture, and a fixture carries no attribute metadata — so a demo of this
-  control would show a grid with no bars in it, which is a worse answer than no
-  demo. See [`SPEC.md`](https://github.com/pcfhub/pcf-grid-data-bars/blob/main/SPEC.md)
+- **The demo on this page runs against a stand-in.** The hub's demo harness
+  stands up its own grid over a fixture whose columns declare their ranges in a
+  stand-in Dataverse. Three columns draw bars, and two left at the platform's
+  default range decline, as they would on a real table. Values there print as
+  the stored number rather than formatted. See
+  [`SPEC.md`](https://github.com/pcfhub/pcf-grid-data-bars/blob/main/SPEC.md)
   in the repository for what has and has not been verified on a real grid.

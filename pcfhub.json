@@ -34,8 +34,24 @@
   },
 
   "demo": {
-    "fidelity": "none",
+    "fidelity": "mocked",
     "host": "grid",
-    "presets": []
+    "bundle": "out/controls/GridDataBars/bundle.js",
+    "styles": ["out/controls/GridDataBars/css/GridDataBars.css"],
+    "datasetFixture": "demo/records.json",
+    "limitations": [
+      "The ranges come from the demo’s stand-in Dataverse, read through EntityDefinitions(…)/Attributes the way a model-driven grid answers them. Credit limit, Satisfaction and Win probability declare a Minimum and Maximum, so they draw bars; Annual revenue and Employees are left at the platform’s default range and draw none, which is what most numeric columns on most tables look like.",
+      "Values print as the stored number — 420000 rather than $420,000.00 — because the demo’s grid hands a renderer the stored value as its formatted value too. A real grid formats currency and decimals by the user’s settings; the bars are unaffected.",
+      "The grid is PCFHub’s stand-in, not the Power Apps grid: the cell renderers run for real, the surrounding grid does not, and sorting, filtering and paging are not modelled."
+    ],
+    "presets": [
+      {
+        "slug": "default",
+        "name": "Accounts with ranges",
+        "description": "Three columns with a declared range draw bars; two left at the platform's default range decline and keep the grid's own cells.",
+        "isDefault": true,
+        "props": {}
+      }
+    ]
   }
 }

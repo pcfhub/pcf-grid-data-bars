@@ -4,6 +4,7 @@
   "slug": "pcf-grid-data-bars",
   "name": "Grid Data Bars",
   "tagline": "In-cell proportional bars for bounded numeric columns on the Power Apps grid.",
+  "summary": "A grid customizer that draws a bar behind each value of a numeric column on the Power Apps grid, so outliers and clusters are visible before any number is read.\n\n- The bar is scaled to the minimum and maximum the column declares in Dataverse, never to the values on the page\n- The platform's own formatted number stays on top, unchanged\n- A column that declares no range keeps the grid's ordinary cell\n\nModel-driven apps only. It is assigned to a table's grid rather than placed on a form.",
   "category": "grids",
   "hosts": ["model-driven"],
   "tags": [],

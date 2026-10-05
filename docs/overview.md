@@ -8,6 +8,10 @@ order: 1
 
 In-cell proportional bars for bounded numeric columns on the Power Apps grid.
 
+:::callout{type=warning}
+**Reference example · built with AI.** This control was written with AI (Claude) and tested on a live Dataverse form; its code has not been reviewed line by line. It is published as a worked example and is not maintained — read the source and [SPEC.md](https://github.com/pcfhub/pcf-grid-data-bars/blob/main/SPEC.md) (what was measured on the form) before you use it. Fixes are not guaranteed.
+:::
+
 A numeric column in a grid is a list of numbers, and a list of numbers is
 something you read one row at a time. Grid Data Bars draws a bar behind each
 value, scaled to the range the column itself declares, so the shape of the

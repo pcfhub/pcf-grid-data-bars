@@ -8,6 +8,8 @@
   "category": "grids",
   "hosts": ["model-driven"],
   "tags": [],
+  "supportLevel": "reference",
+  "builtWith": "ai",
 
   "control": {
     "namespace": "PCFHub",
